@@ -30,106 +30,9 @@ end
 end
 
 
-function [model, L, Lhist] = linregFitEbChen(X, Y)
-% Evidence procedure (Empirical Bayes) for linear regression
-% PMTKauthor Tao Chen
-% PMTKurl http://www3.ntu.edu.sg/home/chentao/software.htm
-% It estimates alpha (scalar) and beta
-% L is log marginal likelihood
-% gamma is effective number of paramers
 
-% This file is from pmtk3.googlecode.com
-
-
-% we currently ignore whether we prepended 1s  to X or not
-
-[N, M] = size(X);
-X = [ones(N, 1) X] ;
-M = M + 1 ; 
-
-
-% pre-computation & initial values
-
-XX = X'*X;
-XX2 = X*X';
-Xy = X' * Y;
-
-% The method can get stuck in local minima, so we should
-% do multiple restarts
-%alpha = exp(randn()*3-3); %alpha=1;
-%beta = exp(randn()*3-3); %beta=1;
-alpha = 0.01; % initiailly don't trust prior
-beta = 1; % initially trust the data
-mn = zeros(M,1); Sn = zeros(M,M);
-
-L_old = -inf;
-Lhist = [];
-for i = 1:100;
-  
-  % calcualte covariance matrix S
-  if ( N > M )
-    T = alpha*eye(M) + XX*beta;
-    cholT = chol(T);
-    Ui = inv(cholT);
-    Sn = Ui * Ui';
-    logdetS = - 2 * sum ( log(diag(cholT)) );
-  else
-    T = eye(N)/beta + XX2/alpha;
-    cholT = chol(T);
-    Ui = inv(cholT);
-    Sn = eye(M)/alpha - X' * Ui * Ui' * X / alpha / alpha;
-    logdetS = sum(log(diag(cholT)))*2 + M*log(alpha) + N*log(beta);
-    logdetS = - logdetS;
-  end
-  
-  mn = beta * Sn * Xy;
- 
-  
-  t1 = sum ( (Y - X * mn).^2 );
-  t2 = mn' * mn;
-  
-  gamma = M - alpha * trace(Sn);
-  beta = ( N - gamma ) / ( t1 );
-  
-  L = M*log(alpha) - N*log(2*pi) + N*log(beta) - beta*t1 - alpha*t2 + logdetS;
-  L = L/2;
-  Lhist(i) = L; %ok
-  fprintf('Iter %d: L=%f, alpha=%f, beta=%f\n', i, L, alpha, beta);
-  
-  
-  if abs(L - L_old) < 1e-2 % use absolute change to avoid small uphill steps
-      if (mn(2)-4*mn(3))^2 < 1 && mn(2)^2 < 1
-          break;
-      else
-          alpha = 1.2 * alpha ;
-      end%  especially at the initial iterations
-  else
-    % update alpha only if we DO NOT break
-    alpha = ( gamma ) / ( t2 );
-  end
-  L_old = L;
-  
-  
-  
-end
-% Needed by predict
-model.wN = mn;
-model.VN = Sn;
-model.beta = beta;
-
-% For diagnostic purposes only
-model.alpha = alpha;
-model.gamma = gamma;
-
-
-end
-
-
-
-
-
-
-function [w, V, invV, logdetV, an, bn, E_a, L] = vb_linear_fit(X, y, a0, b0, c0, d0)
+function mdl = vb_linear_fit(X, y, a0, b0, c0, d0)
+% function [w, V, invV, logdetV, an, bn, E_a, L] = vb_linear_fit(X, y, a0, b0, c0, d0)
 % [w, V, invV, logdetV, an, bn, E_a, L] = vb_linear_fit(X, y)
 %
 % estimates w sucht that y = Xw, using Bayesian regularisation.
@@ -168,7 +71,7 @@ function [w, V, invV, logdetV, an, bn, E_a, L] = vb_linear_fit(X, y, a0, b0, c0,
 
 
 
-% prior parameters Uninformative
+% prior parameters ADDED: Uninformative Prior
 if nargin < 3,  a0 = 1e-6;  end
 if nargin < 4,  b0 = 1e-6;  end
 if nargin < 5,  c0 = 1e-6;  end
@@ -228,7 +131,113 @@ end
 % augment variational bound with constant terms
 L = L - 0.5 * (N * log(2 * pi) - D) - gammaln(a0) + a0 * log(b0) ...
     - gammaln(c0) + c0 * log(d0);
+
+mdl.LogLikelihood = L ;
+mdl.theta = w ;
+mdl.V = V ;
+mdl.an = an;
+mdl.bn = bn;
+
 end
+
+
+function [model, L, Lhist] = linregFitEbChen(X, Y)
+% Evidence procedure (Empirical Bayes) for linear regression
+% PMTKauthor Tao Chen
+% PMTKurl http://www3.ntu.edu.sg/home/chentao/software.htm
+% It estimates alpha (scalar) and beta
+% L is log marginal likelihood
+% gamma is effective number of paramers
+
+% This file is from pmtk3.googlecode.com
+
+
+% we currently ignore whether we prepended 1s  to X or not
+
+% Added feature
+[N, M] = size(X);
+X = [ones(N, 1) X] ;
+M = M + 1 ; 
+
+
+% pre-computation & initial values
+
+XX = X'*X;
+XX2 = X*X';
+Xy = X' * Y;
+
+% The method can get stuck in local minima, so we should
+% do multiple restarts
+%alpha = exp(randn()*3-3); %alpha=1;
+%beta = exp(randn()*3-3); %beta=1;
+alpha = 0.4; % initiailly don't trust prior
+beta = 1; % initially trust the data
+mn = zeros(M,1); Sn = zeros(M,M);
+
+L_old = -inf;
+Lhist = [];
+for i = 1:100;
+  
+  % calcualte covariance matrix S
+  if ( N > M )
+    T = alpha*eye(M) + XX*beta;
+    %A = alpha*eye(M) ; A(1,1) = 0 ;
+    %T = A + XX*beta;
+    cholT = chol(T);
+    Ui = inv(cholT);
+    Sn = Ui * Ui';
+    logdetS = - 2 * sum ( log(diag(cholT)) );
+  else
+    T = eye(N)/beta + XX2/alpha;
+    cholT = chol(T);
+    Ui = inv(cholT);
+    Sn = eye(M)/alpha - X' * Ui * Ui' * X / alpha / alpha;
+    logdetS = sum(log(diag(cholT)))*2 + M*log(alpha) + N*log(beta);
+    logdetS = - logdetS;
+  end
+  
+  mn = beta * Sn * Xy;
+ 
+  
+  t1 = sum ( (Y - X * mn).^2 );
+  t2 = mn' * mn;
+  
+  gamma = M - alpha * trace(Sn);
+  beta = ( N - gamma ) / ( t1 );
+  
+  L = M*log(alpha) - N*log(2*pi) + N*log(beta) - beta*t1 - alpha*t2 + logdetS;
+  L = L/2;
+  Lhist(i) = L; %ok
+  fprintf('Iter %d: L=%f, alpha=%f, beta=%f\n', i, L, alpha, beta);
+  
+  
+  %if abs(L - L_old) < 1e-2 % use absolute change to avoid small uphill steps
+  if (mn(2)-4*mn(3))^2 < 1 && mn(2)^2 < 1
+    break;
+  else
+    alpha = 1.2 * alpha ;
+  %else
+    % update alpha only if we DO NOT break
+  %  alpha = ( gamma ) / ( t2 );
+  end
+  L_old = L ;
+  
+  
+  
+end
+% Needed by predict
+model.wN = mn;
+model.VN = Sn;
+model.beta = beta;
+
+% For diagnostic purposes only
+model.alpha = alpha;
+model.gamma = gamma;
+
+
+end
+
+
 
 
 function mdl = fitConstML(X, y)
