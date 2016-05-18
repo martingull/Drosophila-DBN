@@ -16,7 +16,7 @@ para.transform = 'log256' ;
 % Set search values.
 para.nIter = 200 ; % Evaluations of causal structure
 para.nRestart = 4 ; % 
-para.robustOpts = 'gaussian' ; % see fitMdl, node assumptions. 
+para.robustOpts = 'EB' ; % see fitMdl, node assumptions. 
 
 % Set simulations parameters
 %para.mkSim = 'on' ;
