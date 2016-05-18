@@ -13,7 +13,7 @@ interCell = cell(1, para.nRestart);
 BIC = zeros(1, para.nRestart);
 
 % CAN ADD PARFOR HERE TO USE MORE CORES. 
-parfor i = 1:para.nRestart
+for i = 1:para.nRestart
      [interCell{i}, BIC(i)] = learn_struct_dbn_stats(logData, para) ;
      disp(['Run number ', num2str(i), ' of ', num2str(para.nRestart), ' complete.'])
 end

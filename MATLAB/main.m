@@ -24,7 +24,7 @@ RMSE = performance_analysis(data, 'constML') ;
 regWgt = mk_regulation_matrix(data, 'constML') ;
 
 % Experiment: Make list of probable networks, 
-%mk_experiment_metropolis_edges(logData)  ;
+%mk_experiment_metropolis_edges(logData) ;
 
 % Make movie
 %mk_movie(simData, 'sim_Movie')
